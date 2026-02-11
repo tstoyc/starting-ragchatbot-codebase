@@ -107,6 +107,27 @@ header h1 {
     margin-bottom: 1.5rem;
 }
 
+.new-chat-button {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: none;
+    border: none;
+    padding: 0.5rem 0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    outline: none;
+}
+
+.new-chat-button:hover,
+.new-chat-button:focus {
+    color: var(--primary-color);
+}
+
 .sidebar-section:last-child {
     margin-bottom: 0;
 }
@@ -241,8 +262,36 @@ header h1 {
 }
 
 .sources-content {
-    padding: 0 0.5rem 0.25rem 1.5rem;
-    color: var(--text-secondary);
+    list-style: none;
+    padding: 0.25rem 0.5rem 0.25rem 0.5rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sources-content li {
+    padding: 0.3rem 0.6rem;
+    background: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    transition: border-color 0.2s ease;
+}
+
+.sources-content li:hover {
+    border-color: var(--primary-color);
+}
+
+.sources-content a.source-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    display: block;
+}
+
+.sources-content a.source-link:hover {
+    color: var(--primary-hover);
 }
 
 /* Markdown formatting styles */
