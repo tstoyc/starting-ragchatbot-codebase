@@ -150,3 +150,91 @@ def mock_tool_manager(mock_vector_store):
     search_tool = CourseSearchTool(mock_vector_store)
     tm.register_tool(search_tool)
     return tm
+
+
+# --- Mock RAG System for API tests ---
+
+@pytest.fixture
+def mock_rag_system():
+    """A fully mocked RAGSystem suitable for API endpoint testing."""
+    rag = MagicMock()
+    rag.query.return_value = (
+        "Neural networks are computational models.",
+        [{"label": "Deep Learning - Lesson 1", "url": "https://example.com/1"}],
+    )
+    rag.get_course_analytics.return_value = {
+        "total_courses": 2,
+        "course_titles": ["Deep Learning Fundamentals", "ML Engineering"],
+    }
+    rag.session_manager.create_session.return_value = "session_1"
+    rag.session_manager.clear_session.return_value = None
+    return rag
+
+
+# --- Test FastAPI app ---
+
+@pytest.fixture
+def test_app(mock_rag_system):
+    """A FastAPI test app that mirrors production endpoints but skips static file mounts.
+
+    This avoids the import-time side effects in app.py (RAGSystem init, static file mount
+    requiring ../frontend to exist) by defining the endpoints inline with a mocked RAGSystem.
+    """
+    from fastapi import FastAPI, HTTPException
+    from pydantic import BaseModel
+    from typing import List, Optional
+
+    class QueryRequest(BaseModel):
+        query: str
+        session_id: Optional[str] = None
+
+    class SourceItem(BaseModel):
+        label: str
+        url: Optional[str] = None
+
+    class QueryResponse(BaseModel):
+        answer: str
+        sources: List[SourceItem]
+        session_id: str
+
+    class CourseStats(BaseModel):
+        total_courses: int
+        course_titles: List[str]
+
+    app = FastAPI()
+
+    @app.post("/api/query", response_model=QueryResponse)
+    async def query_documents(request: QueryRequest):
+        try:
+            session_id = request.session_id
+            if not session_id:
+                session_id = mock_rag_system.session_manager.create_session()
+            answer, sources = mock_rag_system.query(request.query, session_id)
+            return QueryResponse(answer=answer, sources=sources, session_id=session_id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/session/{session_id}")
+    async def clear_session(session_id: str):
+        mock_rag_system.session_manager.clear_session(session_id)
+        return {"status": "ok"}
+
+    @app.get("/api/courses", response_model=CourseStats)
+    async def get_course_stats():
+        try:
+            analytics = mock_rag_system.get_course_analytics()
+            return CourseStats(
+                total_courses=analytics["total_courses"],
+                course_titles=analytics["course_titles"],
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    return app
+
+
+@pytest.fixture
+def client(test_app):
+    """A synchronous test client for the test FastAPI app."""
+    from starlette.testclient import TestClient
+    return TestClient(test_app)
