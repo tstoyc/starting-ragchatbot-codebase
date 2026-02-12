@@ -5,7 +5,22 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton, themeToggle;
+
+// Apply saved theme immediately to avoid flash
+(function() {
+    // Suppress transitions during initial theme application
+    document.documentElement.classList.add('no-transitions');
+
+    const saved = localStorage.getItem('theme');
+    if (saved) {
+        if (saved === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+    }
+})();
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,7 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     newChatButton = document.getElementById('newChatButton');
+    themeToggle = document.getElementById('themeToggle');
 
+    initThemeToggle();
     setupEventListeners();
     createNewSession();
     loadCourseStats();
@@ -44,6 +61,52 @@ function setupEventListeners() {
     });
 }
 
+
+// Theme Toggle
+function initThemeToggle() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    updateToggleAriaLabel(currentTheme);
+
+    // Re-enable transitions after the first paint completes
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.documentElement.classList.remove('no-transitions');
+        });
+    });
+
+    // Toggle on click
+    themeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const newTheme = isDark ? 'light' : 'dark';
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+    });
+
+    // Follow OS preference changes when user hasn't explicitly chosen
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                applyTheme(e.matches ? 'light' : 'dark');
+            }
+        });
+    }
+}
+
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    updateToggleAriaLabel(theme);
+}
+
+function updateToggleAriaLabel(theme) {
+    const label = theme === 'light'
+        ? 'Switch to dark theme'
+        : 'Switch to light theme';
+    themeToggle.setAttribute('aria-label', label);
+}
 
 // Chat Functions
 async function sendMessage() {
